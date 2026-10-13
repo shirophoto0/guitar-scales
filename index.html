@@ -50,7 +50,7 @@ button,select,input{font:inherit;color:inherit}
 .msg b{color:var(--ink)}
 .rotate{position:fixed;inset:0;z-index:50;display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:var(--bg);text-align:center;padding:24px}
 .rotate svg{width:80px;height:80px;color:var(--accent)}
-@media (orientation:portrait){.rotate{display:flex}}
+@media (orientation:portrait){body:not(.tuning) .rotate{display:flex}}
 .sheet{position:fixed;inset:0;z-index:40;display:none;background:rgba(0,0,0,.55)}
 .sheet.open{display:flex;justify-content:flex-end}
 .sheet .in{width:min(420px,92vw);height:100%;background:var(--panel);border-left:1px solid var(--line);padding:calc(14px + env(safe-area-inset-top,0px)) calc(16px + env(safe-area-inset-right,0px)) 16px 16px;overflow-y:auto}
@@ -67,6 +67,10 @@ input[type=range]{width:100%;accent-color:var(--accent)}
 .tuner.open{display:flex}
 .thead{display:flex;align-items:center;gap:10px}
 .tbody{flex:1;display:grid;grid-template-columns:1fr 1.4fr;gap:18px;align-items:center;min-height:0}
+@media (orientation:portrait){.tbody{grid-template-columns:1fr;align-content:center;gap:26px}.tnote{font-size:120px}.tcents span:nth-child(2),.tcents span:nth-child(4){display:none}.strs button{width:48px;height:56px}.thead b{font-size:15px}}
+.tgo{display:flex;justify-content:center;margin-top:14px}
+.tgo .btn{padding:10px 18px;font-size:15px}
+.tsub{font-size:12.5px;color:var(--muted);text-align:center;margin-top:8px}
 .tnote{font:700 92px/1 var(--sans);text-align:center}
 .tnote sub{font-size:30px;color:var(--muted);vertical-align:baseline}
 .tfreq{font:600 15px var(--mono);color:var(--muted);text-align:center;margin-top:6px}
@@ -130,14 +134,16 @@ input[type=range]{width:100%;accent-color:var(--accent)}
 </div></div>
 
 <div class="tuner" id="tuner">
-  <div class="thead"><button class="btn" id="tClose">← กลับ</button><b style="font-size:16px">จูนสาย (มาตรฐาน E A D G B E)</b><div class="spacer"></div><span class="stat" id="tA4">A4 = 440 Hz</span></div>
+  <div class="thead"><b style="font-size:16px">จูนสาย</b><span class="stat" id="tA4">E A D G B E · A4 = 440 Hz</span><div class="spacer"></div><button class="btn on" id="tClose">ฝึกสเกล →</button></div>
   <div class="tbody">
-    <div><div class="tnote" id="tNote">–</div><div class="tfreq" id="tFreq">ดีดสายทีละเส้น</div></div>
+    <div><div class="tnote" id="tNote">♪</div><div class="tfreq" id="tFreq">ดีดสายทีละเส้น</div></div>
     <div>
       <div class="meter" id="meter"><div class="mid"></div><div class="needle" id="needle"></div></div>
       <div class="tcents"><span>−50</span><span>ต่ำไป · หมุนลูกบิดให้ตึงขึ้น</span><span>0</span><span>สูงไป · ผ่อนลง</span><span>+50</span></div>
       <div class="tstate" id="tState"></div>
       <div class="strs" id="strs"></div>
+      <div class="tgo" id="tGo"><button class="btn on" id="tStart">🎤 เริ่มจูน (เปิดไมค์)</button></div>
+      <div class="tsub" id="tSub">แตะปุ่มสายเพื่อฟังเสียงอ้างอิง · ฝึกสเกลให้หมุนจอเป็นแนวนอน</div>
       <div class="err" id="tErr"></div>
     </div>
   </div>
@@ -170,8 +176,9 @@ const pretty=s=>s.replace("#","♯").replace(/^([A-G])b/,"$1♭");
 const midiHz=m=>440*Math.pow(2,(m-69)/12);
 
 /* ---------- state ---------- */
-let S={key:"A",scale:"pmin",pos:5,lab:"note",view:"tab",sub:1,guide:true,testOrder:false,bpm:60,pxmm:6.1};
+let S={key:"A",scale:"pmin",pos:5,lab:"note",view:"player",sub:1,guide:true,testOrder:false,bpm:60,pxmm:6.1};
 try{const v=JSON.parse(localStorage.getItem("st-state")||"null");if(v)S=Object.assign(S,v);}catch(e){}
+if(!S.v2){ S.view="player"; S.v2=1; }
 const save=()=>{try{localStorage.setItem("st-state",JSON.stringify(S))}catch(e){}};
 let mode="play", running=false, stepIdx=0, seq=[], found=new Set(), flashes=[], score={ok:0,bad:0,miss:0}, hitThisStep=false, timer=null, listenOK=0;
 const $=id=>document.getElementById(id);
@@ -389,11 +396,12 @@ function findPos(m){ const cs=cells(); for(let s=6;s>=1;s--){ const f=m-OPEN[s-1
 /* ---------- tuner ---------- */
 const TUNE=[{n:"E",o:2,m:40,s:6},{n:"A",o:2,m:45,s:5},{n:"D",o:3,m:50,s:4},{n:"G",o:3,m:55,s:3},{n:"B",o:3,m:59,s:2},{n:"E",o:4,m:64,s:1}];
 let tHist=[];
-function openTuner(){ stop(); $("tuner").classList.add("open"); $("tErr").textContent="";
+function openTuner(withMic){ stop(); $("tuner").classList.add("open"); document.body.classList.add("tuning"); $("tErr").textContent="";
   $("strs").innerHTML=TUNE.map(t=>`<button data-m="${t.m}" aria-label="เสียงอ้างอิงสาย ${t.s}">${t.n}<small>สาย ${t.s}</small></button>`).join("");
   $("strs").querySelectorAll("button").forEach(b=>b.onclick=()=>play(+b.dataset.m,0.7));
-  startMic(onTunePitch); }
-function closeTuner(){ stopMic(); $("tuner").classList.remove("open"); }
+  $("tGo").hidden=!!withMic; if(withMic) tunerMic(); }
+function tunerMic(){ ac(); startMic(onTunePitch).then(ok=>{ $("tGo").hidden=ok; if(ok) $("tFreq").textContent="ดีดสายทีละเส้น"; }); }
+function closeTuner(){ stopMic(); $("tuner").classList.remove("open"); document.body.classList.remove("tuning"); layout(); draw(); }
 function onTunePitch(f){
   const nd=$("needle");
   if(f<0||f>1400){ return; }
@@ -412,7 +420,7 @@ function renderSheet(){
   chips("gKey",KEYS.map(k=>[k,pretty(k)]),S.key,v=>{S.key=v;refresh();});
   chips("gScale",SCALES.map(s=>[s.id,s.n]),S.scale,v=>{S.scale=v;refresh();});
   chips("gLab",[["note","ชื่อโน้ต"],["deg","ขั้นสเกล (1 ♭3 ...)"],["none","ไม่แสดง"]],S.lab,v=>{S.lab=v;refresh();});
-  chips("gView",[["tab","แบบแท็บ (สาย 1 อยู่บน)"],["player","แบบมองลงคอ (สาย 6 อยู่บน)"]],S.view,v=>{S.view=v;refresh();});
+  chips("gView",[["player","แบบคอกีตาร์จริง (สาย 6 อยู่บน)"],["tab","แบบแท็บ (สาย 1 อยู่บน)"]],S.view,v=>{S.view=v;refresh();});
   chips("gSub",[["1","1 โน้ตต่อจังหวะ"],["2","2 โน้ตต่อจังหวะ"]],String(S.sub),v=>{S.sub=+v;refresh();});
   chips("gGuide",[["s1","เปิดเสียงนำโน้ต"],["s0","ปิดเสียงนำ"]],S.guideSound?"s1":"s0",v=>{S.guideSound=v==="s1";refresh();});
   chips("gTest",[["free","หาทุกตำแหน่ง"],["order","เรียงตามลำดับ"],["root","ใบ้ตำแหน่งราก"]],S.testOrder?"order":(S.testRoot?"root":"free"),v=>{S.testOrder=v==="order";S.testRoot=v==="root";refresh();});
@@ -439,11 +447,12 @@ $("mListen").onclick=()=>{stop();mode="listen";score={ok:0,bad:0,miss:0};updScor
 $("bpmDn").onclick=()=>{S.bpm=Math.max(30,S.bpm-5);refresh(); if(running&&mode==="play") start();};
 $("bpmUp").onclick=()=>{S.bpm=Math.min(200,S.bpm+5);refresh(); if(running&&mode==="play") start();};
 $("bGo").onclick=()=>{ if(running||mic) stop(); else start(); draw(); };
-$("bTuner").onclick=openTuner; $("tClose").onclick=closeTuner;
+$("bTuner").onclick=()=>openTuner(true); $("tClose").onclick=closeTuner; $("tStart").onclick=tunerMic;
 $("neck").addEventListener("pointerdown",onTap);
 window.addEventListener("resize",()=>{layout();draw();});
 document.fonts&&document.fonts.ready.then(()=>{layout();draw();});
 refresh();
+openTuner(false);
 </script>
 </body>
 </html>
