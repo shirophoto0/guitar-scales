@@ -231,7 +231,7 @@ input[type=range]{width:100%;accent-color:var(--accent)}
     <button class="hc big" data-go="tuner"><i>🎙</i><span><b>จูนสาย</b><small>เปิดไมค์ ดีดทีละสาย</small></span></button>
     <button class="hc" data-go="key"><i>🔑</i><b>คีย์</b><small>คอร์ดประจำคีย์ ครบ 12 คีย์</small></button>
     <button class="hc" data-go="prog"><i>🔁</i><b>ทางเดินคอร์ด</b><small>ทางเดินยอดนิยม + ตัวอย่างเพลง</small></button>
-    <button class="hc" data-go="lib"><i>📚</i><b>คลังคอร์ด</b><small>12 ราก × 5 ชนิด</small></button>
+    <button class="hc" data-go="lib"><i>📚</i><b>คลังคอร์ด</b><small>12 ราก × 5 ชนิด + sus · add9 · slash</small></button>
     <button class="hc" data-go="scale"><i>🎼</i><b>ฝึกสเกล</b><small>คอเท่าจริง · หมุนจอแนวนอน</small></button>
   </div>
 </div></div>
@@ -358,6 +358,20 @@ Object.assign(CHORDS,{
   "Em9":[[0,2,0,0,0,2],[0,2,0,0,0,3]], "Dm9":[["x",5,3,5,5,"x"],[0,2,1,3,4,0],{base:3}]
 });
 const LPC={C:0,D:2,E:4,F:5,G:7,A:9,B:11};
+/* บท 3.3.2 sus · add9 และ 3.3.3 slash chord: [ชื่อ, เฟร็ต สาย6→1, นิ้ว, ตัวเลือก, ชนิด] */
+const EXTRA={
+ C:[["Csus2",["x",3,0,0,1,3],[0,3,0,0,1,4],{},"sus2"],["Csus4",["x",3,3,0,1,1],[0,3,4,0,1,1],{barre:{fret:1,from:4,to:5}},"sus4"],["Cadd9",["x",3,2,0,3,0],[0,2,1,0,3,0],{},"add9"],["C/G",[3,3,2,0,1,0],[4,3,2,0,1,0],{},"/"],["C/E",[0,3,2,0,1,0],[0,3,2,0,1,0],{},"/"]],
+ D:[["Dsus2",["x","x",0,2,3,0],[0,0,0,1,3,0],{},"sus2"],["Dsus4",["x","x",0,2,3,3],[0,0,0,1,3,4],{},"sus4"],["D/F#",[2,"x",0,2,3,2],["T",0,0,1,3,2],{},"/"],["D/A",["x",0,0,2,3,2],[0,0,0,1,3,2],{},"/"]],
+ E:[["Esus2",[0,2,4,4,0,0],[0,1,3,4,0,0],{},"sus2"],["Esus4",[0,2,2,2,0,0],[0,2,3,4,0,0],{},"sus4"],["Eadd9",[0,2,4,1,0,0],[0,2,4,1,0,0],{},"add9"]],
+ F:[["Fsus2",["x","x",3,0,1,1],[0,0,3,0,1,1],{barre:{fret:1,from:4,to:5}},"sus2"],["Fadd9",["x","x",3,2,1,3],[0,0,3,2,1,4],{},"add9"],["F/C",["x",3,3,2,1,1],[0,4,3,2,1,1],{barre:{fret:1,from:4,to:5}},"/"]],
+ G:[["G (320033)",[3,2,0,0,3,3],[2,1,0,0,3,4],{},""],["Gsus2",[3,0,0,0,3,3],[2,0,0,0,3,4],{},"sus2"],["Gsus4",[3,3,0,0,1,3],[2,3,0,0,1,4],{},"sus4"],["Gadd9",[3,2,0,2,0,3],[3,2,0,1,0,4],{},"add9"],["G/B",["x",2,0,0,0,3],[0,1,0,0,0,3],{},"/"]],
+ A:[["Asus2",["x",0,2,2,0,0],[0,0,1,2,0,0],{},"sus2"],["Asus4",["x",0,2,2,3,0],[0,0,1,2,3,0],{},"sus4"],["Aadd9",["x",0,2,4,2,0],[0,0,1,4,2,0],{},"add9"],["Am/G",[3,0,2,2,1,0],[4,0,2,3,1,0],{},"/"]]
+};
+CHORDLIB.forEach(g=>{ (EXTRA[g.root]||[]).forEach(c=>g.chords.push(c)); });
+const ctype=(g,c)=>c[4]!==undefined?c[4]:c[0].slice(g.root.length);
+const OPENPC=[4,9,2,7,11,4];
+const chordPcs=fr=>fr.map((f,i)=>f==="x"?null:(OPENPC[i]+f)%12).filter(x=>x!==null);
+
 const npc=n=>(LPC[n[0]]+(n.split("#").length-1)-(n.slice(1).split("b").length-1)+24)%12;
 const MAJ=["C","G","D","A","E","B","F#","F","Bb","Eb","Ab","Db"];
 function spellDeg(root,deg,semi){ const L="CDEFGAB", l=L[(L.indexOf(root[0])+deg)%7], want=(npc(root)+semi)%12, d=((want-LPC[l])%12+18)%12-6; return l+(d>0?"#".repeat(d):"b".repeat(-d)); }
@@ -385,6 +399,20 @@ function capoHint(){
   return best?`<div class="hint">เล่นง่ายขึ้น: ติด<b>คาโป้ช่อง ${best.f}</b> แล้วจับรูปคอร์ดของคีย์ <b>${best.e}</b> เสียงที่ออกมาจะเป็นคีย์ ${keyLabel()}</div>`:"";
 }
 
+function colorView(pcs){
+  const set=new Set(pcs), out={sus:[],add9:[],sl:[]};
+  CHORDLIB.forEach(g=>g.chords.forEach(c=>{ const t=ctype(g,c); if(!["sus2","sus4","add9","/"].includes(t)) return;
+    if(!chordPcs(c[1]).every(p=>set.has(p))) return;
+    const card=`<div class="card">${chordBox(nameUI(c[0]),c[1],c[2],c[3])}<span class="nt">${t==="/"?"เบส "+nameUI(c[0].split("/")[1]):t}</span></div>`;
+    (t==="add9"?out.add9:t==="/"?out.sl:out.sus).push(card); }));
+  const sec=(h,sub,a)=>a.length?`<h3>${h}</h3><p class="sub">${sub}</p><div class="grid">${a.join("")}</div>`:"";
+  const any=out.sus.length+out.add9.length+out.sl.length;
+  return `<h3 style="margin-top:26px">คอร์ดสีสันที่ใช้ได้ในคีย์นี้ (บท 3.3)</h3>`+(any?
+    sec("sus2 · sus4","แขวนตัวที่ 3 ไว้ ฟังค้าง ๆ เปิด ๆ ใช้ประดับคอร์ดที่ค้างนาน (บท 3.3.2)",out.sus)+
+    sec("add9","คอร์ดเมเจอร์ที่เติมตัวที่ 9 ใสสว่างกว่าเดิม (บท 3.3.2)",out.add9)+
+    sec("Slash chord","เปลี่ยนโน้ตเบส ให้เบสเดินเป็นขั้น (บท 3.3.3)",out.sl)
+    :`<p class="sub">คีย์นี้ยังไม่มีรูป sus / add9 / slash แบบสายเปล่าในคลัง ลองติดคาโป้ตามคำแนะนำด้านบน แล้วใช้คอร์ดสีสันของคีย์ที่จับง่ายแทน</p>`);
+}
 function keyView(){
   const t=tonic(), min=S.mode==="min", sc=scale(t,min), pcs=sc.map(npc);
   const RN=min?["i","ii°","III","iv","v","VI","VII"]:["I","ii","iii","IV","V","vi","vii°"];
@@ -408,7 +436,8 @@ function keyView(){
    <p class="legend"><i></i>กรอบทอง = คอร์ดที่ใช้บ่อยที่สุดในคีย์นี้</p>
    ${extra}
    <div class="row" style="margin-top:18px"><button class="chip" id="b7" aria-pressed="${S.sev}">แสดงคอร์ด 7 ประจำคีย์</button></div>
-   ${S.sev?`<div class="grid">${cards7.join("")}</div>`:""}`;
+   ${S.sev?`<div class="grid">${cards7.join("")}</div>`:""}
+   ${colorView(pcs)}`;
 }
 
 const PROGS=[
@@ -443,13 +472,13 @@ function progView(){
    ${mine.map(progCard).join("")}
    <h3>ใช้คอร์ดชุดเดียวกันใน${oth}</h3>${other.map(progCard).join("")}`;
 }
-const QN={"":"เมเจอร์","m":"ไมเนอร์","7":"7","m7":"m7","maj7":"maj7"};
+const QN={"":"เมเจอร์","m":"ไมเนอร์","7":"7","m7":"m7","maj7":"maj7","sus2":"sus2","sus4":"sus4","add9":"add9","/":"Slash (/เบส)"};
 function libView(){
   const ch=(g,v,l,cur)=>`<button class="chip" data-g="${g}" data-v="${v}" aria-pressed="${cur===v}">${l}</button>`;
   const groups=CHORDLIB.filter(g=>S.libR==="all"||g.root===S.libR);
-  const body=groups.map(g=>{ const cs=g.chords.filter(c=>S.libQ==="all"||c[0]===g.root+S.libQ);
+  const body=groups.map(g=>{ const cs=g.chords.filter(c=>S.libQ==="all"||ctype(g,c)===S.libQ);
     return cs.length?`<h3>${nameUI(g.root)}${g.alt?" / "+nameUI(g.alt):""}</h3><div class="grid">${cs.map(c=>`<div class="card">${chordBox(nameUI(c[0]),c[1],c[2],c[3])}</div>`).join("")}</div>`:""; }).join("");
-  return `<h2>คลังคอร์ด</h2><p class="sub">12 ราก × 5 ชนิด เลือกกรองตามรากหรือชนิด</p>
+  return `<h2>คลังคอร์ด</h2><p class="sub">12 ราก × 5 ชนิด + sus · add9 · slash chord จากบท 3.3 เลือกกรองตามรากหรือชนิด</p>
    <div class="row">${ch("r","all","ทุกราก",S.libR)}${CHORDLIB.map(g=>ch("r",g.root,nameUI(g.root),S.libR)).join("")}</div>
    <div class="row">${ch("q","all","ทุกชนิด",S.libQ)}${Object.entries(QN).map(([k,v])=>ch("q",k,v,S.libQ)).join("")}</div>${body}
    <p class="sub" style="margin-top:14px">วิธีอ่าน: ✕ ไม่ดีด · ○ สายเปล่า · แถบยาว = นิ้วชี้ทาบ · 4fr = เส้นบนสุดคือช่อง 4</p>`;
