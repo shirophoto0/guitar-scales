@@ -26,8 +26,8 @@
 html,body{height:100%;margin:0}
 body{background:var(--bg);color:var(--ink);font:14px/1.4 var(--sans);overflow:hidden;-webkit-user-select:none;user-select:none;touch-action:manipulation}
 button,select,input{font:inherit;color:inherit}
-#app{position:fixed;inset:0;display:flex;flex-direction:row;padding:calc(max(env(safe-area-inset-top,0px),var(--topfix,0px)) + var(--topadj,0px)) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) max(6px,env(safe-area-inset-left,0px))}
-.rail{flex:0 0 auto;width:128px;display:grid;grid-template-columns:1fr 1fr;gap:6px;align-content:center;padding:6px 6px 6px 0;border-right:1px solid var(--line);margin-right:4px}
+#app{position:fixed;inset:0;display:flex;flex-direction:row;padding:calc(max(env(safe-area-inset-top,0px),var(--topfix,0px)) + var(--topadj,0px)) env(safe-area-inset-right,0px) 0 max(6px,env(safe-area-inset-left,0px))}
+.rail{flex:0 0 auto;width:128px;display:grid;grid-template-columns:1fr 1fr;gap:6px;align-content:center;padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px)) 0;border-right:1px solid var(--line);margin-right:4px}
 .rb{white-space:nowrap;position:relative;min-height:48px;border:1px solid var(--line);background:var(--panel);border-radius:12px;padding:4px 2px;font-weight:600;font-size:11.5px;line-height:1.15;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;touch-action:manipulation}
 .rb::after{content:"";position:absolute;inset:-4px}
 .rb i{font-style:normal;font-size:17px;line-height:1}
@@ -59,8 +59,8 @@ button,select,input{font:inherit;color:inherit}
 .bpm button{width:28px;height:28px;padding:0;border-radius:8px}
 .stage{flex:1 1 auto;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden}
 #neck{display:block;touch-action:none}
-.info{position:absolute;left:12px;bottom:6px;font:500 12px var(--mono);color:var(--muted);pointer-events:none}
-.msg{position:absolute;right:12px;bottom:6px;font-size:13px;color:var(--muted);pointer-events:none;text-align:right}
+.info{position:absolute;left:12px;top:42px;z-index:2;font:500 12px var(--mono);color:var(--muted);pointer-events:none}
+.msg{position:absolute;right:12px;top:24px;z-index:2;font-size:13px;color:var(--muted);pointer-events:none;text-align:right}
 .msg b{color:var(--ink)}
 .rotate{position:fixed;inset:0;z-index:50;display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:var(--bg);text-align:center;padding:24px}
 .rotate svg{width:80px;height:80px;color:var(--accent)}
@@ -248,10 +248,10 @@ function layout(){
   while(end<startF+12 && (openCol+dist(end+1)-L0)*pxmm<=avail) end++;
   const minEnd=startF===0?4:startF+3;
   if(end<minEnd){ end=minEnd; pxmm=Math.min(pxmm,avail/(openCol+dist(end)-L0)); }
-  const maxH=H-32; let shrink=1; if(neckW(dist(end))*pxmm>maxH){ shrink=maxH/(neckW(dist(end))*pxmm); pxmm*=shrink; }
+  const phone=H<600, BM=phone?5:0, TOP=phone?62:32, maxH=H-TOP-BM; let shrink=1; if(neckW(dist(end))*pxmm>maxH){ shrink=maxH/(neckW(dist(end))*pxmm); pxmm*=shrink; }
   const lenPx=(openCol+dist(end)-L0)*pxmm, left=Math.round((W-lenPx)/2)+10;
   cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr); cv.style.width=W+"px"; cv.style.height=H+"px";
-  G={W,H,dpr,pxmm,startF,end,openCol,left,cy:H/2+1,L0};
+  G={W,H,dpr,pxmm,startF,end,openCol,left,cy:phone?H-BM-neckW(dist(end))*pxmm/2:H/2+1,L0};
   $("info").textContent=(pxmm<S.pxmm-0.01)?`ย่อเหลือ ${Math.round(pxmm/S.pxmm*100)}% เพื่อให้พอดีจอ`:`ขนาดเท่าจริง · ${startF===0?"สายเปล่า":"ช่อง "+startF}–${end}`;
 }
 const MIR=()=>S.view==="player", DIR=()=>MIR()?-1:1;
