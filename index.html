@@ -29,6 +29,7 @@ button,select,input{font:inherit;color:inherit}
 #app{position:fixed;inset:0;display:flex;flex-direction:column;padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)}
 .bar{display:flex;align-items:center;gap:8px;padding:3px 12px;background:var(--bar);border-bottom:1px solid var(--line);min-height:40px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
 .bar::-webkit-scrollbar{display:none}
+@media (max-width:900px){.bar{gap:4px;padding:3px 6px}.btn,.seg button{padding:5px 7px;font-size:12px}.title{font-size:13px}.bpm button{width:26px;height:26px}}
 .btn{border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:5px 10px;font-weight:600;font-size:13px;white-space:nowrap;cursor:pointer}
 .btn.on{background:var(--accent);border-color:var(--accent);color:#1B130B}
 .btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
@@ -99,7 +100,8 @@ input[type=range]{width:100%;accent-color:var(--accent)}
     <div class="bpm" id="bpmBox"><button class="btn" id="bpmDn" aria-label="ลดความเร็ว">−</button><span id="bpmV">60</span><span style="color:var(--muted)">BPM</span><button class="btn" id="bpmUp" aria-label="เพิ่มความเร็ว">+</button></div>
     <button class="btn on" id="bGo">▶ เริ่ม</button>
     <div class="spacer"></div>
-    <div class="stat" id="score">ถูก <b>0</b> · ผิด <b>0</b></div>
+    <div class="stat" id="score">✓<b>0</b> ✕<b>0</b></div>
+    <button class="btn" id="bView" aria-label="สลับมุมมอง"></button>
     <button class="btn" id="bTuner">จูนสาย</button>
   </div>
   <div class="stage" id="stage">
@@ -228,8 +230,9 @@ function layout(){
   G={W,H,dpr,pxmm,startF,end,openCol,left,cy:H/2+1,L0};
   $("info").textContent=(pxmm<S.pxmm-0.01)?`ย่อเหลือ ${Math.round(pxmm/S.pxmm*100)}% เพื่อให้พอดีจอ`:`ขนาดเท่าจริง · ${startF===0?"สายเปล่า":"ช่อง "+startF}–${end}`;
 }
-const fx=mm=>G.left+(G.openCol+mm-G.L0)*G.pxmm;
-function cellX(f){ return f===0?[G.left,G.left+G.openCol*G.pxmm]:[fx(dist(f-1)),fx(dist(f))]; }
+const MIR=()=>S.view==="player", DIR=()=>MIR()?-1:1;
+const fx=mm=>{ const x=G.left+(G.openCol+mm-G.L0)*G.pxmm; return MIR()?G.W-x:x; };
+function cellX(f){ return f===0?[fx(-G.openCol),fx(0)]:[fx(dist(f-1)),fx(dist(f))]; }
 function noteX(f){ const [a,b]=cellX(f); return f===0?a+(b-a)*0.45:a*0.35+b*0.65; }
 function strY(s,mm){ const w=neckW(mm)-EDGE*2, order=S.view==="tab"?(s-1):(6-s); return G.cy+(-w/2+order*w/5)*G.pxmm; }
 function noteMM(f){ return f===0?0:(dist(f-1)+dist(f))/2; }
@@ -266,7 +269,7 @@ function draw(){
   const half=mm=>neckW(mm)/2*pxmm;
   // wood
   const grd=c.createLinearGradient(0,G.cy-half(b),0,G.cy+half(b)); grd.addColorStop(0,css("--wood2")); grd.addColorStop(.5,css("--wood")); grd.addColorStop(1,css("--wood2"));
-  c.fillStyle=grd; c.beginPath(); c.moveTo(xa-(G.startF<=1?0:8),G.cy-half(a)); c.lineTo(xb+8,G.cy-half(b)); c.lineTo(xb+8,G.cy+half(b)); c.lineTo(xa-(G.startF<=1?0:8),G.cy+half(a)); c.closePath(); c.fill();
+  c.fillStyle=grd; c.beginPath(); const D=DIR(), xa2=xa-D*(G.startF<=1?0:8), xb2=xb+D*8; c.moveTo(xa2,G.cy-half(a)); c.lineTo(xb2,G.cy-half(b)); c.lineTo(xb2,G.cy+half(b)); c.lineTo(xa2,G.cy+half(a)); c.closePath(); c.fill();
   // grain
   c.globalAlpha=.08; c.strokeStyle="#000"; for(let i=0;i<14;i++){ const y=G.cy-half(b)+i*(2*half(b))/14; c.beginPath(); c.moveTo(xa,y); c.bezierCurveTo(xa+(xb-xa)*.3,y+3,xa+(xb-xa)*.7,y-3,xb,y); c.stroke(); } c.globalAlpha=1;
   // inlays (style dots 3 5 7 9, double 12)
@@ -275,7 +278,7 @@ function draw(){
     if(f===12){ c.beginPath(); c.arc(x,G.cy-half(noteMM(f))*.45,r,0,7); c.arc(x,G.cy+half(noteMM(f))*.45,r,0,7); c.fill(); } else { c.beginPath(); c.arc(x,G.cy,r,0,7); c.fill(); } } }
   c.globalAlpha=1;
   // nut / frets
-  if(G.startF<=1){ const xn=fx(0); c.fillStyle="#EFE6D6"; c.fillRect(xn-5*pxmm/6,G.cy-half(0),5*pxmm/6,half(0)*2); }
+  if(G.startF<=1){ const xn=fx(0); c.fillStyle="#EFE6D6"; const nw=5*pxmm/6; c.fillRect(MIR()?xn:xn-nw,G.cy-half(0),nw,half(0)*2); }
   c.strokeStyle=css("--fret"); c.lineWidth=Math.max(2,2.2*pxmm/6);
   for(let f=Math.max(1,G.startF-1);f<=G.end;f++){ if(f===0) continue; const x=fx(dist(f)), h=half(dist(f)); c.beginPath(); c.moveTo(x,G.cy-h); c.lineTo(x,G.cy+h); c.stroke(); }
   // fret numbers
@@ -284,11 +287,12 @@ function draw(){
   // strings
   const gauges=[0.30,0.41,0.69,0.86,1.12,1.40];
   for(let s=1;s<=6;s++){ c.strokeStyle=css("--string"); c.lineWidth=Math.max(1,gauges[s-1]*pxmm*0.9); c.globalAlpha=s>=3?0.95:0.85;
-    c.beginPath(); c.moveTo(G.startF===0?G.left:xa-8,strY(s,a)); c.lineTo(xb+8,strY(s,b)); c.stroke(); }
+    c.beginPath(); c.moveTo(G.startF===0?fx(-G.openCol):xa-D*8,strY(s,a)); c.lineTo(xb+D*8,strY(s,b)); c.stroke(); }
   c.globalAlpha=1;
   // string names at left
-  c.fillStyle=css("--muted"); c.font=`600 11px ${css("--mono")}`; c.textAlign="right";
-  ["e","B","G","D","A","E"].forEach((n,i)=>c.fillText(n,(G.startF===0?G.left:xa-8)-5,strY(i+1,a)+4));
+  c.fillStyle=css("--muted"); c.font=`600 11px ${css("--mono")}`; c.textAlign=MIR()?"left":"right";
+  const xs=(G.startF===0?fx(-G.openCol):xa-D*8)-D*5;
+  ["e","B","G","D","A","E"].forEach((n,i)=>c.fillText(n,xs,strY(i+1,a)+4));
   // notes
   const notes=windowNotes(), r=Math.min(5.2*pxmm/2.2*1.0, 3.6*pxmm), sc=scaleObj(), now=performance.now();
   const target=(mode!=="test"&&seq.length)?seq[stepIdx%seq.length]:null;
@@ -313,7 +317,7 @@ function dotDraw(c,x,y,r,fill,label,tc){
 /* ---------- hit testing ---------- */
 function hit(px,py){
   let best=null, bd=1e9;
-  for(const f of cells()){ const [x0,x1]=cellX(f); if(px<x0-4||px>x1+4) continue;
+  for(const f of cells()){ const [u,v]=cellX(f), x0=Math.min(u,v), x1=Math.max(u,v); if(px<x0-4||px>x1+4) continue;
     for(let s=1;s<=6;s++){ const y=strY(s,noteMM(f)), d=Math.abs(py-y); if(d<bd){bd=d;best={s,f};} } }
   const sp=(neckW(dist(G.end))-EDGE*2)/5*G.pxmm; if(!best || bd>Math.max(14,sp*0.75)) return null; return best;
 }
@@ -333,7 +337,7 @@ function onTap(e){
 }
 function flash(h,ok){ flashes.push({s:h.s,f:h.f,ok,t:performance.now()}); requestAnimationFrame(draw); }
 function msg(t){ $("msg").innerHTML=t; }
-function updScore(){ $("score").innerHTML=`ถูก <b>${score.ok}</b> · ผิด <b>${score.bad}</b>`+(mode==="play"&&running?` · พลาด <b>${score.miss}</b>`:""); }
+function updScore(){ $("score").innerHTML=`✓<b>${score.ok}</b> ✕<b>${score.bad}</b>`+(mode==="play"&&running?` · พลาด <b>${score.miss}</b>`:""); }
 
 /* ---------- play-along ---------- */
 function advance(){ stepIdx=(stepIdx+1)%seq.length; draw(); }
@@ -420,7 +424,7 @@ function renderSheet(){
   chips("gKey",KEYS.map(k=>[k,pretty(k)]),S.key,v=>{S.key=v;refresh();});
   chips("gScale",SCALES.map(s=>[s.id,s.n]),S.scale,v=>{S.scale=v;refresh();});
   chips("gLab",[["note","ชื่อโน้ต"],["deg","ขั้นสเกล (1 ♭3 ...)"],["none","ไม่แสดง"]],S.lab,v=>{S.lab=v;refresh();});
-  chips("gView",[["player","แบบคอกีตาร์จริง (สาย 6 อยู่บน)"],["tab","แบบแท็บ (สาย 1 อยู่บน)"]],S.view,v=>{S.view=v;refresh();});
+  chips("gView",[["tab","มองหน้าจอปกติ (สาย 1 บน · ช่อง 5→9 ซ้ายไปขวา)"],["player","จับคอกีตาร์จริง (สาย 6 บน · ช่อง 9←5 ขวาไปซ้าย)"]],S.view,v=>{S.view=v;refresh();});
   chips("gSub",[["1","1 โน้ตต่อจังหวะ"],["2","2 โน้ตต่อจังหวะ"]],String(S.sub),v=>{S.sub=+v;refresh();});
   chips("gGuide",[["s1","เปิดเสียงนำโน้ต"],["s0","ปิดเสียงนำ"]],S.guideSound?"s1":"s0",v=>{S.guideSound=v==="s1";refresh();});
   chips("gTest",[["free","หาทุกตำแหน่ง"],["order","เรียงตามลำดับ"],["root","ใบ้ตำแหน่งราก"]],S.testOrder?"order":(S.testRoot?"root":"free"),v=>{S.testOrder=v==="order";S.testRoot=v==="root";refresh();});
@@ -430,6 +434,7 @@ function renderSheet(){
 function refresh(){
   save(); renderSheet(); layout(); buildSeq(); stepIdx=0; found=new Set();
   const sc=scaleObj(); $("tTitle").firstChild.nodeValue=`${pretty(S.key)} ${sc.n}`; $("tSub").textContent=`${S.pos===0?"สายเปล่า":"ช่อง "+S.pos}–${G.end} · ${seq.length?(seq.length+1)/2|0:0} โน้ตขาขึ้น`;
+  $("bView").textContent=MIR()?"🎸 คอจริง":"🖥 จอปกติ";
   $("bpmBox").style.display=mode==="play"?"flex":"none"; $("bpmV").textContent=S.bpm;
   ["mPlay","mTest","mListen"].forEach(id=>$(id).classList.toggle("on",{mPlay:"play",mTest:"test",mListen:"listen"}[id]===mode));
   if(!running) msg(mode==="play"?"แตะ ▶ เริ่ม หรือลองแตะจุดขอบสีทองทีละตัว":mode==="test"?"แตะ ▶ เริ่ม แล้วหาตำแหน่งโน้ตในสเกล":"แตะ ▶ เริ่ม แล้วอนุญาตให้ใช้ไมค์");
@@ -447,6 +452,7 @@ $("mListen").onclick=()=>{stop();mode="listen";score={ok:0,bad:0,miss:0};updScor
 $("bpmDn").onclick=()=>{S.bpm=Math.max(30,S.bpm-5);refresh(); if(running&&mode==="play") start();};
 $("bpmUp").onclick=()=>{S.bpm=Math.min(200,S.bpm+5);refresh(); if(running&&mode==="play") start();};
 $("bGo").onclick=()=>{ if(running||mic) stop(); else start(); draw(); };
+$("bView").onclick=()=>{S.view=MIR()?"tab":"player";refresh();};
 $("bTuner").onclick=()=>openTuner(true); $("tClose").onclick=closeTuner; $("tStart").onclick=tunerMic;
 $("neck").addEventListener("pointerdown",onTap);
 window.addEventListener("resize",()=>{layout();draw();});
